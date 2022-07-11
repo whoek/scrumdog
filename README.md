@@ -1,8 +1,5 @@
-# jira2sqlite
+# scrumdog
 
-Download your Jira Issues to SQLite
-
-For general information please refer to the https://scrumdog.app/
-
+scrumdog is a free utility to export Jira Issues to a local SQLite database
 
 
