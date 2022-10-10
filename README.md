@@ -6,7 +6,7 @@ For Windows, Linux and Mac binaries -- see <https://github.com/whoek/scrumdog-bi
 For notes on how to use -- see <https://scrumdog.app/>   
 For background on the project -- see <https://whoek.com/b/jira-to-sqlite-with-scrumdog>
 
-## Pre-requisites
+## Pre-requisites to compile the program
 
 Install OCaml -- see <https://ocaml.org/>
 
