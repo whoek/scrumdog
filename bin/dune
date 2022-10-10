@@ -1,0 +1,6 @@
+(executable
+ (name scrumdog)
+
+ (libraries sqlite3 curly str yojson)
+ (foreign_archives sqlite3))
+
