@@ -1,14 +1,14 @@
 # scrumdog
 
-scrumdog is a free utility to export Jira Cloud Issues to a local SQLite database
+scrumdog is a free utility to pull Jira Cloud Issues and save it to a local SQLite database.
 
 For Windows, Linux and Mac binaries -- see <https://github.com/whoek/scrumdog-binaries>    
-For notes on how to use -- see <https://scrumdog.app/>   
+For notes on how to use scrumdog -- see <https://scrumdog.app/>   
 For background on the project -- see <https://whoek.com/b/jira-to-sqlite-with-scrumdog>
 
 ## Pre-requisites to compile the program
 
-Install OCaml -- see <https://ocaml.org/>
+Scrumdog is written in [OCaml](https://ocaml.org/).
 
 Libraries used:
 - `yojson` - parsing library for the JSON format 
@@ -16,10 +16,11 @@ Libraries used:
 - `cohttp-lwt-unix` - library for HTTPS clients 
 - `tls-lwt` - encryption protocal to allow secure HTTPS
 
-To install the libraries run `opam install yojson sqlite3 cohttp-lwt-unix tls-lwt`
+After installing OCaml -- you can install the above libraries with `opam install yojson sqlite3 cohttp-lwt-unix tls-lwt`
 
 
 ## To compile
 
 `opam build`
 
+This will create the same binaries that is available from the [download](https://github.com/whoek/scrumdog-binaries) page.
