@@ -1,6 +1,6 @@
 # scrumdog
 
-scrumdog is a free utility to pull Jira Cloud Issues and save it to a local SQLite database.
+scrumdog is a free utility that download Jira Cloud Issues and save it to a local SQLite database.
 
 For Windows, Linux and Mac binaries -- see <https://github.com/whoek/scrumdog-binaries>    
 For notes on how to use scrumdog -- see <https://scrumdog.app/>   
