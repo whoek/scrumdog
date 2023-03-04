@@ -11,12 +11,12 @@ For background on the project -- see <https://whoek.com/b/jira-to-sqlite-with-sc
 Scrumdog is written in [OCaml](https://ocaml.org/).  
 
 Libraries used:
-- `yojson` - parsing library for the JSON format 
-- `sqlite3` - SQLite3 bindings for OCaml 
-- `cohttp-lwt-unix` - library for HTTPS clients 
+- `yojson` - JSON parsing library
+- `sqlite3` - SQLite3 bindings
+- `cohttp-lwt-unix` - HTTPS client library
 - `tls-lwt` - encryption protocal to allow secure HTTPS
 
-After installing OCaml -- you can install the above libraries with `opam install yojson sqlite3 cohttp-lwt-unix tls-lwt`
+After installing OCaml -- you can install the libraries with `opam install yojson sqlite3 cohttp-lwt-unix tls-lwt`
 
 
 ## To compile
