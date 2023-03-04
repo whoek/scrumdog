@@ -1,6 +1,6 @@
 # scrumdog
 
-scrumdog is a free utility to export Jira Issues to a local SQLite database
+scrumdog is a free utility to export Jira Cloud Issues to a local SQLite database
 
 For Windows, Linux and Mac binaries -- see <https://github.com/whoek/scrumdog-binaries>    
 For notes on how to use -- see <https://scrumdog.app/>   
