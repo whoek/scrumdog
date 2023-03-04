@@ -8,7 +8,7 @@ For background on the project -- see <https://whoek.com/b/jira-to-sqlite-with-sc
 
 ## Pre-requisites to compile the program
 
-Scrumdog is written in [OCaml](https://ocaml.org/).
+Scrumdog is written in [OCaml](https://ocaml.org/).  
 
 Libraries used:
 - `yojson` - parsing library for the JSON format 
@@ -23,4 +23,4 @@ After installing OCaml -- you can install the above libraries with `opam install
 
 `opam build`
 
-This will create the same binaries that is available from the [download](https://github.com/whoek/scrumdog-binaries) page.
+This will create the same binaries that are available from the [download](https://github.com/whoek/scrumdog-binaries) page.
