@@ -1,6 +1,6 @@
 (executable
  (name scrumdog)
 
- (libraries sqlite3 curly str yojson)
- (foreign_archives sqlite3))
-
+ (libraries sqlite3 str yojson  cohttp-lwt-unix)
+ (ocamlopt_flags (:standard -O3))
+ (foreign_archives sqlite3 gmp))

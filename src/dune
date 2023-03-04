@@ -1,5 +1,0 @@
-(ocamllex http)
-
-(library
- (name curly)
- (libraries unix result))
