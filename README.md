@@ -11,11 +11,13 @@ For background on the project -- see <https://whoek.com/b/jira-to-sqlite-with-sc
 Install OCaml -- see <https://ocaml.org/>
 
 Libraries used:
-- `curly` - wrapper around the curl command line utility
 - `yojson` - parsing library for the JSON format 
 - `sqlite3` - SQLite3 bindings for OCaml 
+- `cohttp-lwt-unix` - library for HTTPS clients 
+- `tls-lwt` - encryption protocal to allow secure HTTPS
 
-To install the libraries run `opam install curly yojson sqlite3`
+To install the libraries run `opam install yojson sqlite3 cohttp-lwt-unix tls-lwt`
+
 
 ## To compile
 
