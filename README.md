@@ -16,7 +16,7 @@ Libraries used:
 - `cohttp-lwt-unix` - HTTPS client library
 - `tls-lwt` - encryption protocal to allow secure HTTPS
 
-After installing OCaml -- you can install the libraries with `opam install yojson sqlite3 cohttp-lwt-unix tls-lwt`
+After installing OCaml -- you can install the above libraries with `opam install yojson sqlite3 cohttp-lwt-unix tls-lwt`
 
 
 ## To compile
