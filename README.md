@@ -11,6 +11,7 @@ For background on the project -- see <https://whoek.com/b/jira-to-sqlite-with-sc
 Scrumdog is written in [OCaml](https://ocaml.org/).  
 
 Libraries used:
+- `dune` - build system
 - `yojson` - JSON parsing library
 - `sqlite3` - SQLite3 bindings
 - `cohttp-lwt-unix` - HTTPS client library
