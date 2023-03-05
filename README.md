@@ -16,11 +16,11 @@ Libraries used:
 - `cohttp-lwt-unix` - HTTPS client library
 - `tls-lwt` - encryption protocal to allow secure HTTPS
 
-After installing OCaml -- you can install the above libraries with `opam install yojson sqlite3 cohttp-lwt-unix tls-lwt`
+After installing OCaml -- you can install the above libraries with `opam install dune yojson sqlite3 cohttp-lwt-unix tls-lwt`
 
 
 ## To compile
 
-`opam build`
+`dune build`
 
 This will create the same binaries that are available from the [download](https://github.com/whoek/scrumdog-binaries) page.
