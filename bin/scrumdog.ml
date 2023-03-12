@@ -11,7 +11,7 @@ let show_status = true
 let status txt =
   if show_status then begin
       let t = Unix.localtime @@ Unix.time () in
-      printf "%d-%02d-%02d %02d:%02d:%02d - %s\n%!"
+      printf "\n%d-%02d-%02d %02d:%02d:%02d - %s%!"
         (t.tm_year + 1900) (t.tm_mon + 1) t.tm_mday t.tm_hour
         t.tm_min t.tm_sec txt
     end
@@ -97,8 +97,9 @@ module Args = struct
 
   let arg_version () =
 
-    printf "\nscrumdog %s (%i-bit)\n%!" Version.version  Sys.word_size;
+    printf "\nscrumdog %s\n%!" Version.version;
     printf "Release-Date: %s\n%!" Version.release_date;
+    printf "OCaml version: %s\n%!" Sys.ocaml_version;
     printf "Features: issues links comments subtasks labels components\n%!"
 
   let arg_manual () =
@@ -136,25 +137,24 @@ module Args = struct
     |> List.filter (fun x -> valid_file x)    (* exclude directories *)
     |> (fun x -> if List.length x > 0
                  then begin
-                     printf "%s" "Queries:\n";
+                     printf "\n%s%!" "Queries:\n";
                      List.iter (printf " %s\n") x
                    end
                  else ()
        )
 
   let arg_zero () =
-    Printf.printf "\nscrumdog: try 'scrumdog --help' for more information\n"
+    Printf.printf "\nTry 'scrumdog --help' for more options.\n"
 
   let arg_help () =
     ["Usage:  scrumdog [Query or Option]"
     ; ""
     ; "Options:"
-    ; ""
-    ; " -h, --help    Get help on commands"
-    ; " -m, --manual  Open 'https://scrumdog.app/' in browser"
-    ; " -j, --jql     Create a sample query file named 'sample.jql'"
-    ; " -v, --version Show version number and quit"
-    ; " -l, --license Show license"
+    ; " -h, --help       Get help on commands"
+    ; " -m, --manual     Open 'https://scrumdog.app/' in browser"
+    ; " -j, --jql        Create a sample query file named 'sample.jql'"
+    ; " -v, --version    Show version number and quit"
+    ; " -l, --license    Show license"
     ; ""] |> String.concat "\n" |> printf "\n%s%!";
     print_jql ()
 
@@ -800,13 +800,8 @@ module Db = struct
                              db_field json_field
       ) data;
 
-
-    (* user define functions *)
     let db = S.db_open dbf in
-    S.create_fun1 db "willem" (fun _ -> S.Data.TEXT "willem");
-
     update := !update ^ "key = key \n";
-    (* printf "SQL: \n%s\n\n" !update;  *)
     exec_sql db !update
 
 
@@ -930,21 +925,18 @@ end
 (* ========================================================================== *)
 
 
-let header_auth ~email ~api_token =
-  let h = C.Header.init () in
-  let h = C.Header.add_authorization h
-            (`Basic (email, api_token)) in
-  h
 
-let request_issues_fields  ~server ~email ~api_token  =
+(* let request_issues_fields  ~server ~email ~api_token  = *)
+let request_issues_fields  ~server   =
   let uri =  server ^ "/rest/api/2/field" in
   let head  = [
       ("Accept","application/json");
       ("Content-Type","application/json")
     ]
   in
-  let headers = header_auth ~email ~api_token
-                |> (fun h -> Cohttp.Header.add_list h head) in
+  let headers = C.Header.init ()
+                |> (fun h -> Cohttp.Header.add_list h head)
+  in
   CC.get ~headers:headers
     (Uri.of_string uri) >>= fun (resp, body) ->
   let code = resp |> C.Response.status |> C.Code.code_of_status in
@@ -970,8 +962,9 @@ let request_issues  ~email ~api_token ~server ~jql ~start =
       ("Accept","application/json");
       ("Content-Type","application/json")
     ] in
-
-  let headers = header_auth  ~email ~api_token
+  let headers = C.Header.init ()
+                |> (fun h -> C.Header.add_authorization h
+                               (`Basic (email, api_token)))
                 |> (fun h -> Cohttp.Header.add_list h head)
   in
   let body = CL.Body.of_string bb  in
@@ -1116,10 +1109,10 @@ let fields_db_to_file  ~dbf ~tbl =
 
 
 let pp_response (i : Issues.t) =
-  status @@
-    sprintf
-      "Jira: Get Issues  %3d to %3d of %3d"
-      i.start_at (i.start_at + i.issue_count) i.total
+  Printf.printf "%s%!"
+  @@ sprintf
+       " %4d to %4d of %4d"
+       i.start_at (i.start_at + i.issue_count) i.total
 
 
 (* val string_of_header : (string * string) list -> string  *)
@@ -1128,13 +1121,6 @@ let pp_headers t =
   |> List.map (fun (k, v) -> [Printf.sprintf "%s: %s\n" k v])
   |> List.concat
   |> List.fold_left ( ^ ) ""
-
-
-let response_record = function
-  | Ok (c, h, b) -> begin
-      let r : Response.t = {code = c; headers = h; body = b} in r
-    end
-  | Error _ -> (exit 1)
 
 
 let fields_to_log_files  ~tbl (r : Response.t) =
@@ -1182,7 +1168,7 @@ let get_counts (r : Response.t) : Issues.t =
 
 let response_code_validation (r : Response.t) =
   match r.code with
-  | 200 -> ()
+  | 200 -> Printf.printf ".%!"
   | 400 -> status "Error in config file";
            exit 1
   | 401 -> status "Error in config file";
@@ -1193,7 +1179,7 @@ let response_code_validation (r : Response.t) =
 
 let jql_validation (r : Response.t) =
   let () =  match r.code with
-    | 200 -> ()   (* all good, proceed *)
+    | 200 -> Printf.printf ": %!"
     | 400 -> status "Error in config file"
     | 401 -> status "Error in config file";
              status "Email and/or token incorrect or missing"
@@ -1239,29 +1225,30 @@ let pp_ini (ini : ParseJql.t)  =
         exit 0
       end in
   log "";
-  log @@ sprintf " Configuration file:";
-  log @@ sprintf " Jira server:   %s" ini.server;
-  (* log @@ sprintf " Jira server:   %s" "*************************";  *)
+  log @@ sprintf "Configuration file:";
+  log @@ sprintf "Jira server:   %s" ini.server;
+  (* log @@ sprintf "Jira server:   %s" "*************************";  *)
 
   validate_url ini.server;
 
-  log @@ sprintf " Jira token:    %s" (mask @@ ini.api_token);
-  (* log @@ sprintf " Jira token:    %s" "*************************"; *)
-  log @@ sprintf " Email:         %s" ini.email;
-  (* log @@ sprintf " Email:         %s" "****************"; *)
-  log @@ sprintf " Database file: %s" ini.db_filename;
-  log @@ sprintf " Table prefix:  %s" ini.db_table;
-  log @@ sprintf " JQL:           %s" ini.jql;
+  log @@ sprintf "Jira token:    %s" (mask @@ ini.api_token);
+  (* log @@ sprintf "Jira token:    %s" "*************************"; *)
+  log @@ sprintf "Email:         %s" ini.email;
+  (* log @@ sprintf "Email:         %s" "****************"; *)
+  log @@ sprintf "Database file: %s" ini.db_filename;
+  log @@ sprintf "Table prefix:  %s" ini.db_table;
+  log @@ sprintf "JQL:           %s" ini.jql;
   log "";
 
 exception E of string
 
 let main () =
-  printf "\n%s%!"    "**********************************************************************";
-  printf "\n%s%!"    "* Thanks for using scrumdog.                                         *";
-  printf "\n%s%!"    "* If you need help or have any comments, email:  willem@matimba.com  *";
-  printf "\n%s\n%!"  "**********************************************************************";
-
+  printf "\n%s%!"    "*****************************************************";
+  printf "\nScrumdog %s%!" Version.version;
+  printf "\nRelease-date: %s%!"
+    Version.release_date;
+  printf "\n%s\n%!"  "****************************************************";
+  
   create_logs_folder ();
   let fn = Args.check_args Sys.argv in
   let setup_file_raw = Args.read_text_file fn in
@@ -1275,11 +1262,8 @@ let main () =
   status @@ sprintf "SQLite: Create table '%s_issues'"  tbl;
 
   status "Jira: Get Issue Fields";
-  let fields  = Lwt_main.run @@ request_issues_fields
+  let fields  = Lwt_main.run @@ request_issues_fields  (* no auth required! *)
                                   ~server:ini.server
-                                  ~email:ini.email
-                                  ~api_token:ini.api_token
-                                  (* |>  response_record in *)
   in
   fields_to_log_files         ~tbl   fields;
   response_code_validation           fields;
@@ -1287,13 +1271,14 @@ let main () =
   Db.update_fields_table             ~dbf ~tbl;   (* extract SCHEMA fields *)
   Db.fix_duplicate_field_names      ~dbf ~tbl;
   fields_db_to_file                  ~dbf ~tbl;
-
   Db.add_config_fields  ini.fields   ~dbf ~tbl;
   Db.insert_fields_in_issues_table   ~dbf ~tbl;
+  (* Printf.printf ".done%!"; *)
 
   let start = ref 0 in
   let not_last = ref true in
   while !not_last do
+    status "Jira: Get Issues";
     let resp =  Lwt_main.run @@ request_issues
                                   ~jql:ini.jql
                                   ~server:ini.server
@@ -1305,11 +1290,11 @@ let main () =
 
     issues_to_log_files ~tbl  resp;
     jql_validation            resp;
+
     issues_to_db              ~dbf  ~tbl resp;
     Db.update_issue_fields    ~dbf  ~tbl;
 
-    let counts : Issues.t =
-      get_counts resp in
+    let counts : Issues.t = get_counts resp in
     pp_response counts;
     not_last := not (counts.issue_count < counts.max_results);
     start := !start + counts.max_results
