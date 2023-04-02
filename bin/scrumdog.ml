@@ -1,4 +1,4 @@
-(*                    80 width                                                *)
+(*------------------- 80 width -----------------------------------------------*)
 open Printf
 
 open Lwt                (* to use BIND >>=  *)
@@ -20,8 +20,12 @@ let status txt =
 let log txt =
   printf "%s\n%!" txt
 
-let create_logs_folder () =
-  try Unix.mkdir "logs" 0o777 with
+let create_log_folder () =
+  try Unix.mkdir "log" 0o777 with
+    _ -> ()
+
+let create_csv_folder () =
+  try Unix.mkdir "csv" 0o777 with
     _ -> ()
 
 (*  string -> string -> string -> string  *)
@@ -44,8 +48,9 @@ let mask txt  = String.mapi (fun n x ->
                   ) txt
 
 let option_to_string = function
-    Some x -> x
+    Some x -> x |> replace "\r" ""
   | None -> ""
+
 
 let bool_option_to_int = function
     Some true -> 1
@@ -97,9 +102,9 @@ module Args = struct
 
   let arg_version () =
 
-    printf "\nscrumdog %s\n%!" Version.version;
-    printf "Release-Date: %s\n%!" Version.release_date;
-    printf "OCaml version: %s\n%!" Sys.ocaml_version;
+    (* printf "\nscrumdog %s\n%!" Version.version; *)
+    (* printf "Release-Date: %s\n%!" Version.release_date; *)
+    printf "\nCompiled with OCaml version: %s\n%!" Sys.ocaml_version;
     printf "Features: issues links comments subtasks labels components\n%!"
 
   let arg_manual () =
@@ -294,6 +299,8 @@ module ParseJql = struct
         if tag = "[fields]" then
           tag, len, s, st, et, String.sub raw st (et - st)
                                |> String.trim
+
+
         else
           tag, len, s, st, et, String.sub str st (et - st)
                                |> String.trim
@@ -379,7 +386,8 @@ module ParseJql = struct
   let get_jql_tokens raw : t =
     let str = raw
               |> replace "\r" " "
-              |> replace "\n" " "   in
+              |> replace "\n" " "
+    in
     tags
     |> add_length            (* str not required *)
     |> add_find  str
@@ -517,7 +525,7 @@ module Db = struct
       | r ->  prerr_endline (S.Rc.to_string r);
               prerr_endline (S.errmsg db)
     ) ;
-    (!data, !head)      (* data: array list,  head:  array *)
+    (!data, !head)
 
   let update_fields_table ~dbf ~tbl =
     let sql = sprintf {|-- use ID field for Jira fields
@@ -746,6 +754,7 @@ module Db = struct
                select db_field, count(*) tel
                from %s_fields group by db_field
                having tel > 1)
+
                delete from %s_fields
                where db_field in (select db_field from dupe)
                |}
@@ -783,7 +792,7 @@ module Db = struct
                  db_field,       -- 0
                  json_field,     -- 1
                  schema_system,  -- 2
-                 field_type,     -- 3
+                 field_type,     -- 3  #add \r for fields
                  id              -- 4
                  from %s_fields
                  where  db_field is not null
@@ -793,17 +802,13 @@ module Db = struct
     List.iter (fun x ->
         let db_field   = option_to_string @@ Array.get x 0 in
         let json_field = option_to_string @@ Array.get x 1 in
-        let field_type = option_to_string @@ Array.get x 3 in
-        match field_type with
-        | _ -> update :=
-                 !update ^ sprintf "%s = json_extract(fields,'$.%s'),\n"
-                             db_field json_field
+        update :=  !update ^ sprintf "%s = json_extract(fields,'$.%s'),\n "
+                               db_field json_field
       ) data;
 
     let db = S.db_open dbf in
     update := !update ^ "key = key \n";
     exec_sql db !update
-
 
   (* id;  key;  name;  custom;  db_field   *)
   let get_field_names ~dbf ~tbl =
@@ -926,8 +931,8 @@ end
 
 
 
-(* let request_issues_fields  ~server ~email ~api_token  = *)
-let request_issues_fields  ~server   =
+let request_issues_fields  ~server ~email ~api_token  =
+  (* let request_issues_fields  ~server   = *)
   let uri =  server ^ "/rest/api/2/field" in
   let head  = [
       ("Accept","application/json");
@@ -935,6 +940,8 @@ let request_issues_fields  ~server   =
     ]
   in
   let headers = C.Header.init ()
+                |> (fun h -> C.Header.add_authorization h
+                               (`Basic (email, api_token)))
                 |> (fun h -> Cohttp.Header.add_list h head)
   in
   CC.get ~headers:headers
@@ -979,6 +986,7 @@ let request_issues  ~email ~api_token ~server ~jql ~start =
       body = body } in
   ret
 
+(* json -> list -> insert-fields  *)
 let add_records_to_fields_table  ~dbf ~tbl  (resp : Response.t) =
   let json = Yojson.Safe.from_string resp.body  in
   let open Yojson.Safe.Util in
@@ -1105,7 +1113,7 @@ let fields_db_to_file  ~dbf ~tbl =
                                 !max2 fld2
                                 !max3 fld3
     ) data;
-  text_to_file (sprintf "./logs/fields_%s.txt"   tbl) !contents
+  text_to_file (sprintf "./log/fields_%s.txt"   tbl) !contents
 
 
 let pp_response (i : Issues.t) =
@@ -1123,22 +1131,14 @@ let pp_headers t =
   |> List.fold_left ( ^ ) ""
 
 
-let fields_to_log_files  ~tbl (r : Response.t) =
-  text_to_file (sprintf "./logs/response_%s_fields_code.txt"   tbl)
+(* write http response info to log file *)
+let response_to_log  ~tbl ~id  (r : Response.t) =
+  text_to_file (sprintf "./log/response_%s_%s_code.txt"   tbl id)
     (string_of_int r.code);
-  text_to_file (sprintf "./logs/response_%s_fields_header.txt" tbl)
+  text_to_file (sprintf "./log/response_%s_%s_header.txt" tbl id)
     (pp_headers r.headers);
-  text_to_file (sprintf "./logs/response_%s_fields_body.json"  tbl)
+  text_to_file (sprintf "./log/response_%s_%s_body.json"  tbl id)
     r.body
-
-let issues_to_log_files ~tbl  (r : Response.t) =
-  text_to_file (sprintf "./logs/response_%s_issues_code.txt"   tbl)
-    (string_of_int r.code);
-  text_to_file (sprintf "./logs/response_%s_issues_header.txt" tbl)
-    (pp_headers r.headers);
-  text_to_file (sprintf "./logs/response_%s_issues_body.json"  tbl)
-    r.body
-
 
 let get_counts (r : Response.t) : Issues.t =
   let json = Yojson.Safe.from_string r.body  in
@@ -1227,14 +1227,14 @@ let pp_ini (ini : ParseJql.t)  =
   log "";
   log @@ sprintf "Configuration file:";
   log @@ sprintf "Jira server:   %s" ini.server;
-  (* log @@ sprintf "Jira server:   %s" "*************************";  *)
+  (* log @@ sprintf "Jira server:   %s" "https://jack.atlassian.net/"; *)
 
   validate_url ini.server;
 
   log @@ sprintf "Jira token:    %s" (mask @@ ini.api_token);
-  (* log @@ sprintf "Jira token:    %s" "*************************"; *)
+  (* log @@ sprintf "Jira token:    %s" "abcdeTESTOabcdeTESTabcde"; *)
   log @@ sprintf "Email:         %s" ini.email;
-  (* log @@ sprintf "Email:         %s" "****************"; *)
+  (* log @@ sprintf "Email:         %s" "jack@pirate.ship"; *)
   log @@ sprintf "Database file: %s" ini.db_filename;
   log @@ sprintf "Table prefix:  %s" ini.db_table;
   log @@ sprintf "JQL:           %s" ini.jql;
@@ -1242,14 +1242,68 @@ let pp_ini (ini : ParseJql.t)  =
 
 exception E of string
 
+
+(* head: string array *)
+let csv_of_head h =
+  let delim = "," in
+  let cat s1 s2 = s1 ^ s2 in
+  let tac s1 s2 = s2 ^ s1 in
+  h
+  |> Array.to_list
+  |> String.concat delim
+  |> cat "#,"
+  |> tac "\n"
+
+(* str option array list -> str *)
+let csv_of_table r =
+  let value v = Option.value v ~default:"" in
+  (* make it Excel friendly by having double-quotes and limit size *)
+  let excel_cell = 32_760 in
+  let wrap s = "\""
+               ^ left (replace "\"" "\"\"" s) excel_cell
+               ^ "\"" in
+  let delim = "," in
+  let cat s1 s2 = s1 ^ s2 in
+  let tac s1 s2 = s2 ^ s1 in
+  r
+  |> List.mapi (fun n x ->
+         let line = (string_of_int @@ n + 1) ^ delim in
+         Array.map (fun y -> wrap @@ value y) x
+         |> Array.to_list
+         |> String.concat delim
+         |> cat line
+       )
+  |> String.concat "\n"
+  |> tac "\n"
+
+let create_csv ~dbf ~tbl =
+  let tables = ["links"
+               ;"labels"
+               ;"issues"
+               ;"comments"
+               ;"components"
+               ;"fields"
+               ;"subtasks"] in
+  List.iter (fun x ->
+      create_csv_folder ();
+      let sql = sprintf {| select * from %s_%s |} tbl x  in
+      (* head: string array *)
+      let data, head = Db.select ~dbf ~sql  in
+      let data_text = csv_of_table data in
+      let head_text = csv_of_head head in
+      text_to_file (sprintf "./csv/%s_%s.csv" tbl x) (head_text ^ data_text);
+      status @@ sprintf "csv folder: Create file '%s_%s.csv'" tbl x;
+    ) tables
+
+
 let main () =
   printf "\n%s%!"    "*****************************************************";
   printf "\nScrumdog %s%!" Version.version;
   printf "\nRelease-date: %s%!"
     Version.release_date;
   printf "\n%s\n%!"  "****************************************************";
-  
-  create_logs_folder ();
+
+  create_log_folder ();
   let fn = Args.check_args Sys.argv in
   let setup_file_raw = Args.read_text_file fn in
   let ini : ParseJql.t = ParseJql.get_jql_tokens  setup_file_raw in
@@ -1262,18 +1316,19 @@ let main () =
   status @@ sprintf "SQLite: Create table '%s_issues'"  tbl;
 
   status "Jira: Get Issue Fields";
-  let fields  = Lwt_main.run @@ request_issues_fields  (* no auth required! *)
+  let fields  = Lwt_main.run @@ request_issues_fields
                                   ~server:ini.server
+                                  ~email:ini.email
+                                  ~api_token:ini.api_token
   in
-  fields_to_log_files         ~tbl   fields;
+  response_to_log                    ~tbl   ~id:"fields" fields;
   response_code_validation           fields;
   add_records_to_fields_table        ~dbf ~tbl  fields;
   Db.update_fields_table             ~dbf ~tbl;   (* extract SCHEMA fields *)
-  Db.fix_duplicate_field_names      ~dbf ~tbl;
+  Db.fix_duplicate_field_names       ~dbf ~tbl;
   fields_db_to_file                  ~dbf ~tbl;
   Db.add_config_fields  ini.fields   ~dbf ~tbl;
-  Db.insert_fields_in_issues_table   ~dbf ~tbl;
-  (* Printf.printf ".done%!"; *)
+  Db.insert_fields_in_issues_table   ~dbf ~tbl;    (* pragma table_info(xx_issues *)
 
   let start = ref 0 in
   let not_last = ref true in
@@ -1285,10 +1340,9 @@ let main () =
                                   ~email:ini.email
                                   ~api_token:ini.api_token
                                   ~start:!start
-                                  (* |>  response_record  *)
-    in
 
-    issues_to_log_files ~tbl  resp;
+    in
+    response_to_log           ~tbl   ~id:"issues" fields;
     jql_validation            resp;
 
     issues_to_db              ~dbf  ~tbl resp;
@@ -1310,6 +1364,8 @@ let main () =
   status @@ sprintf "SQLite: Create table '%s_labels'" tbl;
   Db.create_components_table  ~dbf ~tbl;
   status @@ sprintf "SQLite: Create table '%s_components'" tbl;
+
+  create_csv  ~dbf ~tbl;
   status "Done!\n"
 
 let () =
