@@ -101,9 +101,6 @@ module Args = struct
       _ -> false
 
   let arg_version () =
-
-    (* printf "\nscrumdog %s\n%!" Version.version; *)
-    (* printf "Release-Date: %s\n%!" Version.release_date; *)
     printf "\nCompiled with OCaml version: %s\n%!" Sys.ocaml_version;
     printf "Features: issues links comments subtasks labels components\n%!"
 
@@ -299,8 +296,6 @@ module ParseJql = struct
         if tag = "[fields]" then
           tag, len, s, st, et, String.sub raw st (et - st)
                                |> String.trim
-
-
         else
           tag, len, s, st, et, String.sub str st (et - st)
                                |> String.trim
@@ -353,7 +348,6 @@ module ParseJql = struct
         else (left url pos) ^ {|/|}
       else url
     in
-
     { server = trim_url @@ !server;
       api_token = !api_token;
       jql = !jql;
@@ -376,7 +370,6 @@ module ParseJql = struct
     start of tag TEXT --------+   |     |
     end of tag TEXT --------------+     |
     tag TXT ----------------------------+
-
 
    *)
 
@@ -411,7 +404,6 @@ module Db = struct
     let _closed = S.db_close db in
     let () = prerr_endline "db: exiting db ..." in
     exit 1
-
 
   let exec_sql ?(msg = "db: unable to execute sql") db sql =
     match S.exec db sql with
@@ -1227,14 +1219,12 @@ let pp_ini (ini : ParseJql.t)  =
   log "";
   log @@ sprintf "Configuration file:";
   log @@ sprintf "Jira server:   %s" ini.server;
-  (* log @@ sprintf "Jira server:   %s" "https://jack.atlassian.net/"; *)
-
+  (* log @@ sprintf "Jira server:   %s" "https://yourcompany.atlassian.net/"; *)
   validate_url ini.server;
-
   log @@ sprintf "Jira token:    %s" (mask @@ ini.api_token);
-  (* log @@ sprintf "Jira token:    %s" "abcdeTESTOabcdeTESTabcde"; *)
+  (* log @@ sprintf "Jira token:    %s" "xxxxYOURAPITOKENxxxxxxxxx"; *)
   log @@ sprintf "Email:         %s" ini.email;
-  (* log @@ sprintf "Email:         %s" "jack@pirate.ship"; *)
+  (* log @@ sprintf "Email:         %s" "name@yourcompany.com"; *)
   log @@ sprintf "Database file: %s" ini.db_filename;
   log @@ sprintf "Table prefix:  %s" ini.db_table;
   log @@ sprintf "JQL:           %s" ini.jql;
@@ -1257,7 +1247,7 @@ let csv_of_head h =
 (* str option array list -> str *)
 let csv_of_table r =
   let value v = Option.value v ~default:"" in
-  (* make it Excel friendly by having double-quotes and limit size *)
+  (* Excel friendly by having double-quotes and limit cell size *)
   let excel_cell = 32_760 in
   let wrap s = "\""
                ^ left (replace "\"" "\"\"" s) excel_cell
@@ -1294,7 +1284,6 @@ let create_csv ~dbf ~tbl =
       text_to_file (sprintf "./csv/%s_%s.csv" tbl x) (head_text ^ data_text);
       status @@ sprintf "csv folder: Create file '%s_%s.csv'" tbl x;
     ) tables
-
 
 let main () =
   printf "\n%s%!"    "*****************************************************";
