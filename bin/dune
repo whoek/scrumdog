@@ -2,7 +2,7 @@
  (name scrumdog)
  (libraries sqlite3 str yojson  cohttp-lwt-unix)
  (ocamlopt_flags (:standard -compact))
- (foreign_archives sqlite3 gmp)
+; (foreign_archives sqlite3 gmp)
 )
 
 
