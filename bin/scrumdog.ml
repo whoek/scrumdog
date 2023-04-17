@@ -1,5 +1,4 @@
 (*------------------- 80 width -----------------------------------------------*)
-
 open Printf
 
 open Lwt                (* to use BIND >>=  *)
@@ -51,7 +50,6 @@ let mask txt  = String.mapi (fun n x ->
 let option_to_string = function
     Some x -> x |> replace "\r" ""
   | None -> ""
-
 
 let bool_option_to_int = function
     Some true -> 1
@@ -172,15 +170,14 @@ module Args = struct
     Printf.printf "%s\n%!"   "scrumdog: try 'scrumdog --help' for more information"
 
   let sample_config_jql =
-    [
-      ""
+    [ ""
     ; "[server]     https://yourcompany.atlassian.net/"
     ; "[email]      name@yourcompany.com"
     ; "[api_token]    xxxxYOURAPITOKENxxxxxxxxx"
+    ; "[jql]              project = zz" 
     ; "[db_filename]   jira.db"
     ; "[db_table_prefix]  zz"
-    ; "[jql]              project = zz"  ; "" ; ""
-    ; "" ; "" ; "" ; ""
+    ; "" 
     ; "[fields]"
     ; ""
     ; "assignee   assignee.displayName"
@@ -297,6 +294,8 @@ module ParseJql = struct
         if tag = "[fields]" then
           tag, len, s, st, et, String.sub raw st (et - st)
                                |> String.trim
+
+
         else
           tag, len, s, st, et, String.sub str st (et - st)
                                |> String.trim
@@ -304,10 +303,9 @@ module ParseJql = struct
 
   (* string -> string list list *)
   let parse_fields s =
-    String.split_on_char '\n'                   s       (* split on lines *)
+    String.split_on_char '\n' s  (* split on lines *)
     |> List.map (fun x -> Str.split (Str.regexp " +") x)    (* split words*)
     |> List.filter (fun x -> (List.length x) > 0)    (* remove blank lines*)
-
 
   let create_record lst =
     let missing_tag = ref false in
@@ -320,10 +318,12 @@ module ParseJql = struct
     let fields = ref [[""]] in
     List.iter (
         fun (tag, _, s, _, _, txt) ->
-        if tag <> "[fields]" && s = -1 && not !missing_tag then begin
+        if tag <> "[fields]" && s = -1 && not !missing_tag
+        then begin
             printf "\n%s\n%!" "scrumdog: not all required tags found in configuration file";
           end;
-        if tag <> "[fields]" && s = -1 then begin
+        if tag <> "[fields]" && s = -1
+        then begin
             missing_tag := true;
             printf "scrumdog: missing tag: %s\n" tag;
           end;
@@ -349,6 +349,7 @@ module ParseJql = struct
         else (left url pos) ^ {|/|}
       else url
     in
+
     { server = trim_url @@ !server;
       api_token = !api_token;
       jql = !jql;
@@ -414,7 +415,6 @@ module Db = struct
        (* printf "SQL ERROR: %s\n" sql; *)
        gracefully_exit db r message
 
-
   let create_tables ~dbf ~tbl =
     let sql = sprintf "
                        DROP TABLE IF EXISTS %s_fields;
@@ -448,7 +448,7 @@ module Db = struct
                        self TEXT,
                        key TEXT,
                        fields TEXT
-                       );      "  tbl tbl tbl tbl
+                       );"  tbl tbl tbl tbl
     in
     let db = S.db_open dbf in
     exec_sql db sql
@@ -459,11 +459,12 @@ module Db = struct
       | [] -> ()
       | (id, key, nam, cus, ord, nav, sea, unt, cla, sch) :: t ->
          let sql =
-           sprintf {|INSERT INTO %s_fields
+           sprintf "INSERT INTO
+                    %s_fields
                     (id, key, name, custom, orderable, navigable,
                     searchable, untranslatedName, clauseNames, schema)
                     VALUES ('%s','%s','%s', %d, %d,
-                    %d, %d, '%s', '%s','%s') |}
+                    %d, %d, '%s', '%s','%s')"
              tbl
              id key nam cus ord nav sea unt cla sch
          in
@@ -481,9 +482,9 @@ module Db = struct
       | [] -> ()
       | (id, self, key, fields) :: t ->
          let sql =
-           sprintf {|INSERT INTO %s_issues
+           sprintf "INSERT INTO %s_issues
                     (id, self, key, fields)
-                    VALUES('%s', '%s', '%s', '%s') |}
+                    VALUES('%s', '%s', '%s', '%s') "
              tbl
              id self key fields
          in
@@ -494,7 +495,6 @@ module Db = struct
                   end
          in insert t
     in insert issues
-
 
   (* string -> string -> string array list * string array *)
   let  select ~dbf ~sql  =
@@ -521,22 +521,23 @@ module Db = struct
     (!data, !head)
 
   let update_fields_table ~dbf ~tbl =
-    let sql = sprintf {|-- use ID field for Jira fields
-                       update %s_fields SET
-                       json_field = id,
-                       db_field =  replace(lower(trim(id))," ",""),
-                       field_type =  json_extract(schema, '$.type'),
-                       schema_type = json_extract(schema, '$.type'),
-                       schema_items = json_extract(schema, '$.items'),
-                       schema_system = json_extract(schema, '$.system'),
-                       schema_custom = json_extract(schema, '$.custom'),
-                       schema_customId = json_extract(schema, '$.customId')
-                       ;
-                       -- use NAME field for CUSTOMFIELDS
-                       update %s_fields set
-                       db_field = replace(lower(trim(name))," ","")
-                       where id like 'customfield_%%';
-                       |}   tbl tbl
+    let sql = sprintf
+                {|-- use ID field for Jira fields
+                 update %s_fields SET
+                 json_field = id,
+                 db_field =  replace(lower(trim(id))," ",""),
+                 field_type =  json_extract(schema, '$.type'),
+                 schema_type = json_extract(schema, '$.type'),
+                 schema_items = json_extract(schema, '$.items'),
+                 schema_system = json_extract(schema, '$.system'),
+                 schema_custom = json_extract(schema, '$.custom'),
+                 schema_customId = json_extract(schema, '$.customId')
+                 ;
+                 -- use NAME field for CUSTOMFIELDS
+                 update %s_fields set
+                 db_field = replace(lower(trim(name))," ","")
+                 where id like 'customfield_%%';
+                 |}   tbl tbl
     in
     let db = S.db_open dbf in
     exec_sql db sql
@@ -647,7 +648,6 @@ module Db = struct
     let db = S.db_open dbf in
     exec_sql db sql
 
-
   let create_subtasks_table ~dbf ~tbl =
     let sql =
       sprintf {|
@@ -667,7 +667,6 @@ module Db = struct
     in
     let db = S.db_open dbf in
     exec_sql db sql
-
 
   let create_labels_table ~dbf ~tbl =
     let sql =
@@ -690,7 +689,6 @@ module Db = struct
     let db = S.db_open dbf in
     exec_sql db sql
 
-
   let create_components_table ~dbf ~tbl =
     let sql =
       sprintf {|
@@ -710,7 +708,6 @@ module Db = struct
     in
     let db = S.db_open dbf in
     exec_sql db sql
-
 
   (* add config fields to xx_fields table *)
   let add_config_fields fields  ~dbf  ~tbl =
@@ -759,7 +756,6 @@ module Db = struct
     let db = S.db_open dbf in
     exec_sql db sql
 
-
   (** This will insert COLUMNS for every Jira Issue FIELD  *)
   let insert_fields_in_issues_table ~dbf ~tbl =
     let alter = ref "" in
@@ -777,7 +773,6 @@ module Db = struct
       ) data;
     let db = S.db_open dbf in
     exec_sql db !alter
-
 
   let update_issue_fields ~dbf ~tbl =
     let sql = sprintf
@@ -811,7 +806,6 @@ module Db = struct
     let data, _ = select ~dbf  ~sql in
     data
 
-
   (* only keep a..z   0..9   &    _ *)
   let strip_spec_char s =
     let result = ref  "" in
@@ -820,7 +814,6 @@ module Db = struct
         then result := !result ^ Char.escaped x
       ) s;
     !result
-
 
   (* fix duplicate in db_field name  *)
   let fix_duplicate_field_names ~dbf ~tbl =
@@ -834,14 +827,13 @@ module Db = struct
     let data = get_field_names ~dbf ~tbl  in
     let checking = ref true in
     let counter = ref 1  in
-
     List.iter (fun x ->
         let db_field = strip_spec_char
                        @@ option_to_string
                        @@ Array.get x 4  in    (* 5th field in array *)
         Array.set x 4 @@ Some db_field
       ) data;
-
+    
     while !checking do
       checking := false;   (* loop only if a dupe is found *)
       List.iter (fun x ->
@@ -897,7 +889,6 @@ let valid_file fn =
   with
     _ -> false
 
-
 (* ========================================================================== *)
 module Request = struct
   type t =
@@ -907,7 +898,6 @@ module Request = struct
       url     : string
     }
 end
-
 
 (* ========================================================================== *)
 module Issues = struct
@@ -919,10 +909,7 @@ module Issues = struct
     }
 end
 
-
 (* ========================================================================== *)
-
-
 
 let request_issues_fields  ~server ~email ~api_token  =
   (* let request_issues_fields  ~server   = *)
@@ -1021,7 +1008,6 @@ let add_records_to_fields_table  ~dbf ~tbl  (resp : Response.t) =
   in
   Db.insert_fields ~dbf ~tbl ~fields
 
-
 let issues_to_db ~dbf ~tbl  (resp : Response.t) =
   let json = Yojson.Safe.from_string resp.body  in
   let open Yojson.Safe.Util in
@@ -1045,7 +1031,6 @@ let issues_to_db ~dbf ~tbl  (resp : Response.t) =
          ) in
   Db.insert_issues ~dbf ~tbl ~issues
 
-
 (* int -> string *)
 let text_line s n =
   let rec line' lst n =
@@ -1061,7 +1046,7 @@ let fields_db_to_file  ~dbf ~tbl =
                      where  db_field is not null
                      order by field_type, db_field ; "   tbl in
   let  data, _ = Db.select ~dbf ~sql in
-
+  
   (* write out to file *)
   let contents = ref "" in
   let max0 = ref 0 in     (* length of biggest field *)
@@ -1108,13 +1093,11 @@ let fields_db_to_file  ~dbf ~tbl =
     ) data;
   text_to_file (sprintf "./log/fields_%s.txt"   tbl) !contents
 
-
 let pp_response (i : Issues.t) =
   Printf.printf "%s%!"
   @@ sprintf
        " %4d to %4d of %4d"
        i.start_at (i.start_at + i.issue_count) i.total
-
 
 (* val string_of_header : (string * string) list -> string  *)
 let pp_headers t =
@@ -1220,12 +1203,14 @@ let pp_ini (ini : ParseJql.t)  =
   log "";
   log @@ sprintf "Configuration file:";
   log @@ sprintf "Jira server:   %s" ini.server;
-  (* log @@ sprintf "Jira server:   %s" "https://yourcompany.atlassian.net/"; *)
+  (* log @@ sprintf "Jira server:   %s" "https://jack.atlassian.net/"; *)
+
   validate_url ini.server;
+
   log @@ sprintf "Jira token:    %s" (mask @@ ini.api_token);
-  (* log @@ sprintf "Jira token:    %s" "xxxxYOURAPITOKENxxxxxxxxx"; *)
+  (* log @@ sprintf "Jira token:    %s" "abcdeTESTOabcdeTESTabcde"; *)
   log @@ sprintf "Email:         %s" ini.email;
-  (* log @@ sprintf "Email:         %s" "name@yourcompany.com"; *)
+  (* log @@ sprintf "Email:         %s" "jack@pirate.ship"; *)
   log @@ sprintf "Database file: %s" ini.db_filename;
   log @@ sprintf "Table prefix:  %s" ini.db_table;
   log @@ sprintf "JQL:           %s" ini.jql;
@@ -1248,7 +1233,7 @@ let csv_of_head h =
 (* str option array list -> str *)
 let csv_of_table r =
   let value v = Option.value v ~default:"" in
-  (* Excel friendly by having double-quotes and limit cell size *)
+  (* make it Excel friendly by having double-quotes and limit size *)
   let excel_cell = 32_760 in
   let wrap s = "\""
                ^ left (replace "\"" "\"\"" s) excel_cell
@@ -1286,6 +1271,7 @@ let create_csv ~dbf ~tbl =
       status @@ sprintf "csv folder: Create file '%s_%s.csv'" tbl x;
     ) tables
 
+
 let main () =
   printf "\n%s%!"    "*****************************************************";
   printf "\nScrumdog %s%!" Version.version;
@@ -1314,11 +1300,11 @@ let main () =
   response_to_log                    ~tbl   ~id:"fields" fields;
   response_code_validation           fields;
   add_records_to_fields_table        ~dbf ~tbl  fields;
-  Db.update_fields_table             ~dbf ~tbl;   (* extract SCHEMA fields *)
+  Db.update_fields_table             ~dbf ~tbl; 
   Db.fix_duplicate_field_names       ~dbf ~tbl;
   fields_db_to_file                  ~dbf ~tbl;
   Db.add_config_fields  ini.fields   ~dbf ~tbl;
-  Db.insert_fields_in_issues_table   ~dbf ~tbl;    (* pragma table_info(xx_issues *)
+  Db.insert_fields_in_issues_table   ~dbf ~tbl; 
 
   let start = ref 0 in
   let not_last = ref true in
@@ -1330,14 +1316,11 @@ let main () =
                                   ~email:ini.email
                                   ~api_token:ini.api_token
                                   ~start:!start
-
     in
     response_to_log           ~tbl   ~id:"issues" fields;
     jql_validation            resp;
-
     issues_to_db              ~dbf  ~tbl resp;
     Db.update_issue_fields    ~dbf  ~tbl;
-
     let counts : Issues.t = get_counts resp in
     pp_response counts;
     not_last := not (counts.issue_count < counts.max_results);
